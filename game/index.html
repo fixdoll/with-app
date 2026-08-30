@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>With — Creator Chain</title>
+<style>
+  :root {
+    --bg: #12131a;
+    --surface: #1c1e29;
+    --surface-2: #262838;
+    --border: #333648;
+    --text: #eceef5;
+    --text-dim: #9498ab;
+    --accent: #ff5f45;
+    --accent-dim: #4a2a24;
+    --success: #29c98d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 24px 12px;
+  }
+  #app { max-width: 420px; width: 100%; }
+  h1 {
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px;
+  }
+  .logo {
+    width: 30px; height: 28px; border-radius: 8px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: white;
+    letter-spacing: -0.5px;
+  }
+  .header-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border-radius: 14px; padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .creator-badge { text-align: center; flex: 1; }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--surface-2); margin: 0 auto 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: var(--text-dim);
+    border: 2px solid var(--border);
+  }
+  .creator-badge.start .avatar { border-color: var(--success); color: var(--success); }
+  .creator-badge.target .avatar { border-color: var(--accent); color: var(--accent); }
+  .creator-badge .name { font-size: 12px; color: var(--text-dim); }
+  .arrow { color: var(--text-dim); font-size: 18px; }
+
+  #trail {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 16px;
+    font-size: 13px; min-height: 20px;
+  }
+  .pill {
+    background: var(--accent-dim); color: var(--accent);
+    padding: 4px 10px; border-radius: 999px; font-weight: 600;
+  }
+  .trail-arrow { color: var(--text-dim); font-size: 12px; }
+
+  #step-label { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+
+  input[type=text] {
+    width: 100%; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); font-size: 14px; margin-bottom: 12px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .video-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .video-card:hover { border-color: var(--accent); }
+  .thumb {
+    height: 64px; border-radius: 8px; background: var(--surface-2);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 8px; font-size: 20px; color: var(--text-dim);
+  }
+  .video-title { font-size: 12px; font-weight: 500; line-height: 1.3; }
+
+  .creator-row {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    transition: border-color 0.15s;
+  }
+  .creator-row:hover { border-color: var(--accent); }
+  .creator-row .avatar { width: 32px; height: 32px; font-size: 11px; margin: 0; }
+
+  button {
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 11px; cursor: pointer; width: 100%;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  button.ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
+  #submit-toggle { margin-top: 12px; }
+
+  #submit-flow {
+    display: none; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; margin-top: 4px;
+  }
+  #submit-flow .field-label { font-size: 12px; color: var(--text-dim); margin: 10px 0 6px; }
+  .slot-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .slot-row input { margin-bottom: 0; flex: 1; }
+  .slot-row button { width: 36px; padding: 0; flex-shrink: 0; }
+  #preview {
+    display: none; background: var(--surface-2); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; color: var(--text-dim); margin: 8px 0;
+  }
+  #submit-error { display: none; font-size: 12px; color: var(--accent); margin: 8px 0; }
+
+  #win-screen { display: none; text-align: center; padding: 20px 0; }
+  #win-screen h2 { margin-bottom: 4px; }
+  #win-chain { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.8; }
+  #win-chain .pill.hint { background: #4a3d1f; color: #e0b84a; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <h1><span class="logo">w/</span>With</h1>
+
+  <div class="header-bar">
+    <div class="creator-badge start">
+      <div class="avatar" id="start-avatar"></div>
+      <div class="name" id="start-name"></div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="creator-badge target">
+      <div class="avatar" id="target-avatar"></div>
+      <div class="name" id="target-name"></div>
+    </div>
+  </div>
+
+  <div id="trail"></div>
+
+  <div id="game-area">
+    <div id="step-label"></div>
+    <input type="text" id="search" placeholder="Search videos...">
+    <div class="grid" id="video-grid"></div>
+    <div class="grid" id="creator-grid" style="display:none;"></div>
+
+    <button id="submit-toggle" class="ghost">+ Can't find it? Submit a video</button>
+
+    <div id="submit-flow">
+      <div style="font-size:13px; font-weight:600; margin-bottom:4px;">Submit a missing video</div>
+      <div class="field-label">Video link</div>
+      <input type="text" id="link-input" placeholder="Paste YouTube link (try including 'match')">
+      <div id="preview"></div>
+      <div class="field-label">Who's in it?</div>
+      <div id="creator-slots"></div>
+      <button id="add-slot" style="margin-bottom:10px;">+ Add another creator</button>
+      <div id="submit-error"></div>
+      <button id="confirm-submit" class="primary" style="margin-bottom:8px;">Submit and continue</button>
+      <button id="cancel-submit" class="ghost">Cancel</button>
+    </div>
+  </div>
+
+  <div id="win-screen">
+    <h2>🎉 You reached the target!</h2>
+    <div id="win-chain"></div>
+    <button class="primary" onclick="location.reload()">Play again (mock)</button>
+  </div>
+
+</div>
+
+<script>
+/* ---------- MOCK DATA ---------- */
+/* Replace this block with real creators.json / videos.json once the pipeline is ready. */
+
+const creators = {
+  A: { name: "Creator A" },
+  B: { name: "Creator B" },
+  C: { name: "Creator C" },
+  D: { name: "Creator D" },
+  E: { name: "Creator E" },
+  F: { name: "Creator F" },
+  Z: { name: "Creator Z" },
+};
+
+const videos = [
+  { id: "v1", title: "Cooking Challenge w/ Creator B", creators: ["A", "B"] },
+  { id: "v2", title: "Speedrun Collab", creators: ["A", "D"] },
+  { id: "v3", title: "Q&A Livestream", creators: ["A", "B"] },
+  { id: "v4", title: "Panel Talk at Con", creators: ["B", "C", "E"] },
+  { id: "v5", title: "1v1 Rematch", creators: ["C", "F"] },
+  { id: "v6", title: "Duo Playthrough", creators: ["D", "F"] },
+  { id: "v7", title: "Season Finale Special", creators: ["F", "Z"] },
+  { id: "v8", title: "Charity Stream Highlights", creators: ["E", "Z"] },
+];
+
+const START = "A";
+const TARGET = "Z";
+const MAX_HINTS = 3;
+
+/* ---------- STATE ---------- */
+
+let currentCreator = START;
+let hintsUsed = 0;
+let chain = [START]; // sequence of creator IDs
+let usedVideos = [];  // videos used per hop, for the win screen
+
+/* ---------- HELPERS ---------- */
+
+function initials(name) {
+  return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function videosFor(creatorId) {
+  return videos.filter(v => v.creators.includes(creatorId));
+}
+
+function extractVideoId(url) {
+  const patterns = [
+    /watch\?v=([\w-]{5,})/,
+    /youtu\.be\/([\w-]{5,})/,
+    /shorts\/([\w-]{5,})/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return url.trim() || null;
+}
+
+/* fake "oEmbed" lookup for the prototype: if link contains a known creator's
+   name (case-insensitive), treat them as the detected poster */
+function fakeDetectPoster(link) {
+  const lower = link.toLowerCase();
+  for (const id in creators) {
+    if (lower.includes(creators[id].name.toLowerCase().replace(/\s/g, ""))) {
+      return id;
+    }
+  }
+  return null;
+}
+
+/* ---------- RENDER: HEADER ---------- */
+
+document.getElementById("start-avatar").textContent = initials(creators[START].name);
+document.getElementById("start-name").textContent = creators[START].name;
+document.getElementById("target-avatar").textContent = initials(creators[TARGET].name);
+document.getElementById("target-name").textContent = creators[TARGET].name;
+
+/* ---------- RENDER: TRAIL ---------- */
+
+function renderTrail() {
+  const trail = document.getElementById("trail");
+  trail.innerHTML = "";
+  chain.forEach((id, i) => {
+    if (i > 0) {
+      const arrow = document.createElement("span");
+      arrow.className = "trail-arrow";
+      arrow.textContent = "→";
+      trail.appendChild(arrow);
+    }
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = creators[id].name;
+    trail.appendChild(pill);
+  });
+}
+
+/* ---------- STEP 1: VIDEO GRID ---------- */
+
+const videoGrid = document.getElementById("video-grid");
+const creatorGrid = document.getElementById("creator-grid");
+const stepLabel = document.getElementById("step-label");
+const searchBox = document.getElementById("search");
+const submitToggle = document.getElementById("submit-toggle");
+const submitFlow = document.getElementById("submit-flow");
+
+function showVideoStep() {
+  const name = creators[currentCreator].name;
+  stepLabel.textContent = `Pick a video ${name} appeared in`;
+  searchBox.value = "";
+  searchBox.placeholder = `Search ${name}'s videos...`;
+  searchBox.style.display = "";
+  submitToggle.style.display = "";
+  submitFlow.style.display = "none";
+  videoGrid.style.display = "grid";
+  creatorGrid.style.display = "none";
+  renderVideoGrid(videosFor(currentCreator));
+}
+
+function renderVideoGrid(list) {
+  videoGrid.innerHTML = "";
+  if (list.length === 0) {
+    videoGrid.innerHTML = `<div style="grid-column:1/-1;font-size:13px;color:var(--text-dim);padding:10px 0;">No known videos match. Try submitting one below.</div>`;
+    return;
+  }
+  list.forEach(v => {
+    const card = document.createElement("div");
+    card.className = "video-card";
+    card.innerHTML = `<div class="thumb">▶</div><div class="video-title">${v.title}</div>`;
+    card.onclick = () => showCreatorStep(v);
+    videoGrid.appendChild(card);
+  });
+}
+
+searchBox.addEventListener("input", () => {
+  const q = searchBox.value.toLowerCase();
+  renderVideoGrid(videosFor(currentCreator).filter(v => v.title.toLowerCase().includes(q)));
+});
+
+/* ---------- STEP 2: CREATOR GRID ---------- */
+
+function showCreatorStep(video) {
+  const others = video.creators.filter(id => id !== currentCreator);
+  stepLabel.textContent = `Who else is in "${video.title}"?`;
+  searchBox.style.display = "none";
+  submitToggle.style.display = "none";
+  videoGrid.style.display = "none";
+  creatorGrid.style.display = "grid";
+  creatorGrid.innerHTML = "";
+
+  if (others.length === 1) {
+    // obsolete-hint case: only one real choice — could auto-advance,
+    // but for now still render it as a single clickable row for consistency
+  }
+
+  others.forEach(id => {
+    const row = document.createElement("div");
+    row.className = "creator-row";
+    row.innerHTML = `<div class="avatar">${initials(creators[id].name)}</div><span>${creators[id].name}</span>`;
+    row.onclick = () => advanceTo(id, video);
+    creatorGrid.appendChild(row);
+  });
+}
+
+function advanceTo(id, video) {
+  chain.push(id);
+  usedVideos.push(video.title);
+  currentCreator = id;
+  renderTrail();
+
+  if (id === TARGET) {
+    showWinScreen();
+  } else {
+    showVideoStep();
+  }
+}
+
+/* ---------- SUBMISSION FLOW ---------- */
+
+const linkInput = document.getElementById("link-input");
+const preview = document.getElementById("preview");
+const creatorSlots = document.getElementById("creator-slots");
+const addSlotBtn = document.getElementById("add-slot");
+const confirmBtn = document.getElementById("confirm-submit");
+const cancelBtn = document.getElementById("cancel-submit");
+const submitError = document.getElementById("submit-error");
+
+function makeSlot(name, locked) {
+  const row = document.createElement("div");
+  row.className = "slot-row";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = name || "";
+  input.placeholder = "Creator name";
+  input.disabled = !!locked;
+  row.appendChild(input);
+  if (!locked) {
+    const rm = document.createElement("button");
+    rm.textContent = "✕";
+    rm.onclick = () => row.remove();
+    row.appendChild(rm);
+  }
+  return row;
+}
+
+submitToggle.onclick = () => {
+  videoGrid.style.display = "none";
+  searchBox.style.display = "none";
+  submitToggle.style.display = "none";
+  stepLabel.style.display = "none";
+  submitFlow.style.display = "block";
+  linkInput.value = "";
+  preview.style.display = "none";
+  submitError.style.display = "none";
+  creatorSlots.innerHTML = "";
+  creatorSlots.appendChild(makeSlot(creators[currentCreator].name, true));
+};
+
+cancelBtn.onclick = () => {
+  submitFlow.style.display = "none";
+  stepLabel.style.display = "";
+  showVideoStep();
+};
+
+linkInput.addEventListener("input", () => {
+  const val = linkInput.value.trim();
+  if (val.length < 4) { preview.style.display = "none"; return; }
+  const posterId = fakeDetectPoster(val);
+  if (posterId && posterId !== currentCreator) {
+    preview.textContent = `▶ Detected upload from ${creators[posterId].name}`;
+    preview.style.display = "block";
+    const already = Array.from(creatorSlots.children).some(r => r.querySelector("input").value === creators[posterId].name);
+    if (!already) creatorSlots.appendChild(makeSlot(creators[posterId].name, false));
+  } else if (posterId === currentCreator) {
+    preview.textContent = `▶ Detected upload from ${creators[posterId].name} (already listed)`;
+    preview.style.display = "block";
+  } else {
+    preview.textContent = `▶ Video detected (poster unknown — add names manually)`;
+    preview.style.display = "block";
+  }
+});
+
+addSlotBtn.onclick = () => creatorSlots.appendChild(makeSlot("", false));
+
+confirmBtn.onclick = () => {
+  const link = linkInput.value.trim();
+  const names = Array.from(creatorSlots.children)
+    .map(r => r.querySelector("input").value.trim())
+    .filter(Boolean);
+
+  if (!link) {
+    submitError.textContent = "Paste a video link first.";
+    submitError.style.display = "block";
+    return;
+  }
+  if (names.length < 2) {
+    submitError.textContent = "Add at least one other creator.";
+    submitError.style.display = "block";
+    return;
+  }
+  submitError.style.display = "none";
+
+  // Build a provisional video object and drop straight into the co-creator step,
+  // exactly like a normal database-backed video.
+  const videoId = "submitted-" + Date.now();
+  const nameToId = {};
+  Object.keys(creators).forEach(id => nameToId[creators[id].name] = id);
+
+  const creatorIds = names.map(n => {
+    if (nameToId[n]) return nameToId[n];
+    // unknown name typed by the player — mint a temporary id for this session
+    const tempId = "new-" + n.replace(/\s/g, "");
+    creators[tempId] = { name: n };
+    return tempId;
+  });
+
+  const provisionalVideo = { id: videoId, title: "Submitted: " + link.slice(0, 24), creators: creatorIds };
+  videos.push(provisionalVideo); // in the real app: fire GitHub Issue here instead of a hard push
+
+  submitFlow.style.display = "none";
+  stepLabel.style.display = "";
+  showCreatorStep(provisionalVideo);
+};
+
+/* ---------- WIN SCREEN ---------- */
+
+function showWinScreen() {
+  document.getElementById("game-area").style.display = "none";
+  document.getElementById("win-screen").style.display = "block";
+  const winChain = document.getElementById("win-chain");
+  winChain.innerHTML = chain.map(id => creators[id].name).join(" → ") +
+    `<br><br>${chain.length - 1} hop${chain.length - 1 === 1 ? "" : "s"} total`;
+}
+
+/* ---------- INIT ---------- */
+
+renderTrail();
+showVideoStep();
+</script>
+</body>
+</html>
