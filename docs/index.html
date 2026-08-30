@@ -240,10 +240,11 @@ function pickDailyPair(ids) {
 async function loadData() {
   showStatus("Loading today's creators…");
   try {
-    const [creatorsRes, videosRes, bannedRes] = await Promise.all([
+    const [creatorsRes, videosRes, bannedRes, prunedRes] = await Promise.all([
       fetch("data/creators.json"),
       fetch("data/videos.json"),
       fetch("data/banned-creators.json"),
+      fetch("data/pruned-creators.json"),
     ]);
     if (!creatorsRes.ok || !videosRes.ok) {
       throw new Error("Fetch failed: " + creatorsRes.status + " / " + videosRes.status);
@@ -251,15 +252,17 @@ async function loadData() {
     const rawCreators = await creatorsRes.json();
     const rawVideos = await videosRes.json();
     const rawBanned = bannedRes.ok ? await bannedRes.json() : {};
+    const rawPruned = prunedRes.ok ? await prunedRes.json() : {};
 
     creators = rawCreators;
 
-    // Remove banned creators entirely from the working set. Everything else
-    // downstream checks `creators[id]` before showing a name/avatar/pick
-    // option, so deleting them here is sufficient to keep them from ever
-    // surfacing — even if they're still listed in some video's creatorIds.
-    for (const bannedId of Object.keys(rawBanned)) {
-      delete creators[bannedId];
+    // Remove banned AND pruned creators entirely from the working set.
+    // Everything else downstream checks `creators[id]` before showing a
+    // name/avatar/pick option, so deleting them here is sufficient to keep
+    // them from ever surfacing — even if they're still listed in some
+    // video's creatorIds.
+    for (const excludedId of [...Object.keys(rawBanned), ...Object.keys(rawPruned)]) {
+      delete creators[excludedId];
     }
 
     videos = Object.entries(rawVideos).map(([id, v]) => ({

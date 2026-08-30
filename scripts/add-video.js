@@ -35,6 +35,7 @@ const DATA_DIR = path.join(__dirname, "..", "data");
 const CREATORS_PATH = path.join(DATA_DIR, "creators.json");
 const VIDEOS_PATH = path.join(DATA_DIR, "videos.json");
 const BANNED_PATH = path.join(DATA_DIR, "banned-creators.json");
+const PRUNED_PATH = path.join(DATA_DIR, "pruned-creators.json");
 
 function fail(msg) {
   console.error("✖ " + msg);
@@ -107,9 +108,11 @@ async function main() {
   const creators = loadJson(CREATORS_PATH);
   const videos = loadJson(VIDEOS_PATH);
   const banned = loadJson(BANNED_PATH);
+  const pruned = loadJson(PRUNED_PATH);
+  const isExcluded = (id) => !!banned[id] || !!pruned[id];
 
-  if (banned[posterId]) {
-    fail(`Poster (${banned[posterId].name || posterId}) is on the banned list — not adding this video.`);
+  if (isExcluded(posterId)) {
+    fail(`Poster is excluded (banned or previously pruned as inactive) — not adding this video.`);
   }
 
   const refs = extractChannelRefs(description);
@@ -122,7 +125,7 @@ async function main() {
   for (const ref of refs) {
     const [kind, value] = ref.split(":");
     if (kind === "id") {
-      if (banned[value]) continue; // never resolve or include a banned channel ID
+      if (isExcluded(value)) continue; // never resolve or include an excluded channel ID
       linkedIds.add(value);
       if (!creators[value]) toResolve.set(ref, { kind, value });
     } else {
@@ -142,8 +145,8 @@ async function main() {
       unresolved.push(label);
       continue;
     }
-    if (banned[result.id]) {
-      console.log(`  (skipping ${result.name} — on the banned list)`);
+    if (isExcluded(result.id)) {
+      console.log(`  (skipping ${result.name} — excluded)`);
       continue;
     }
     newlyResolved[result.id] = result;

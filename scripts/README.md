@@ -40,12 +40,27 @@ skim before trusting, same as any other automated pass.
     videos — this is by design, not a bug).
   - Otherwise adds the video (poster + mentioned creators) and enqueues any
     newly-found creators for their own crawl pass.
+  - **Prunes** any creator whose RSS feed comes back completely empty
+    (private, deleted, or never posted) — removes them from
+    `creators.json`, strips them from any video's `creatorIds` (deleting
+    the video too if that drops it below 2 valid creators), and records
+    them in `data/pruned-creators.json` so future crawls skip them
+    instantly instead of re-discovering and re-pruning the same
+    unrecognizable channel every time they're mentioned elsewhere. This
+    also keeps the 500-cap budget from being spent on people who'd never
+    be a satisfying answer in-game anyway (often editors/musicians credited
+    on someone else's video, not creators in their own right).
+  - **Keeps running past `MAX_CREATORS`** rather than stopping there: once
+    the cap is hit, new creators stop being added, but the crawl keeps
+    visiting everyone already known, and still adds videos that connect
+    already-known people to each other. A video whose only mentions are
+    brand-new people gets skipped once capped; a video mentioning a mix of
+    known and new people still gets added, just with the new mentions
+    dropped. The crawl only fully stops once the queue is empty.
 
-  Stops when either the queue empties or the total creator count hits
-  `MAX_CREATORS` (500, edit the constant at the top of the file to change
-  it). Saves incrementally after every creator, so an interrupted run
-  doesn't lose progress. Only costs quota on `channels.list` resolution
-  calls (1 unit each) — the RSS fetches themselves are free.
+  Only costs quota on `channels.list` resolution calls (1 unit each) — RSS
+  fetches are free. Safe to re-run at any time, including after raising
+  `MAX_CREATORS` — see the comment header in the file for details.
 
 - **`lib/youtube.js`** — shared helpers used by both scripts above:
   channel-reference extraction (handles `/channel/UC...`, `/@handle`,
