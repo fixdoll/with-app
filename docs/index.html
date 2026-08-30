@@ -156,6 +156,8 @@
 
   <div id="trail"></div>
 
+  <div id="status" style="display:none; font-size:13px; color:var(--text-dim); text-align:center; padding:30px 10px; line-height:1.6; white-space:pre-line;"></div>
+
   <div id="game-area">
     <div id="step-label"></div>
     <input type="text" id="search" placeholder="Search videos...">
@@ -187,40 +189,103 @@
 </div>
 
 <script>
-/* ---------- MOCK DATA ---------- */
-/* Replace this block with real creators.json / videos.json once the pipeline is ready. */
+/* ---------- REAL DATA (fetched) ---------- */
+/* Loaded from /data/creators.json and /data/videos.json — see /data/README.md
+   for the schema. This replaces the old hardcoded mock block. Note the
+   fetched videos.json keys creator references as "creatorIds"; we rename
+   that to "creators" on load so downstream code doesn't have to care. */
 
-const creators = {
-  A: { name: "Creator A" },
-  B: { name: "Creator B" },
-  C: { name: "Creator C" },
-  D: { name: "Creator D" },
-  E: { name: "Creator E" },
-  F: { name: "Creator F" },
-  Z: { name: "Creator Z" },
-};
+let creators = {};   // { channelId: { name, handle?, avatar? } }
+let videos = [];     // [{ id, title, url, creators: [channelId, ...] }]
 
-const videos = [
-  { id: "v1", title: "Cooking Challenge w/ Creator B", creators: ["A", "B"] },
-  { id: "v2", title: "Speedrun Collab", creators: ["A", "D"] },
-  { id: "v3", title: "Q&A Livestream", creators: ["A", "B"] },
-  { id: "v4", title: "Panel Talk at Con", creators: ["B", "C", "E"] },
-  { id: "v5", title: "1v1 Rematch", creators: ["C", "F"] },
-  { id: "v6", title: "Duo Playthrough", creators: ["D", "F"] },
-  { id: "v7", title: "Season Finale Special", creators: ["F", "Z"] },
-  { id: "v8", title: "Charity Stream Highlights", creators: ["E", "Z"] },
-];
-
-const START = "A";
-const TARGET = "Z";
 const MAX_HINTS = 3;
 
-/* ---------- STATE ---------- */
+/* ---------- STATE (set once data loads) ---------- */
 
-let currentCreator = START;
+let START = null;
+let TARGET = null;
+let currentCreator = null;
 let hintsUsed = 0;
-let chain = [START]; // sequence of creator IDs
-let usedVideos = [];  // videos used per hop, for the win screen
+let chain = [];
+let usedVideos = [];
+
+/* ---------- DATA LOADING ---------- */
+
+const statusEl = document.getElementById("status");
+const gameAreaEl = document.getElementById("game-area");
+
+function showStatus(message) {
+  statusEl.style.display = "block";
+  statusEl.textContent = message;
+  gameAreaEl.style.display = "none";
+}
+
+function hideStatus() {
+  statusEl.style.display = "none";
+  gameAreaEl.style.display = "block";
+}
+
+/* Deterministic pick so everyone gets the same start/target on the same day,
+   without needing a precomputed shortest-path graph. Purely a placeholder
+   selection strategy — revisit once the dataset is big enough to care about
+   picking a "good" (reachable, interesting) pair rather than just "a" pair. */
+function pickDailyPair(ids) {
+  const dayIndex = Math.floor(Date.now() / 86400000);
+  const startIdx = dayIndex % ids.length;
+  let targetIdx = (dayIndex * 7 + 3) % ids.length;
+  if (targetIdx === startIdx) targetIdx = (targetIdx + 1) % ids.length;
+  return [ids[startIdx], ids[targetIdx]];
+}
+
+async function loadData() {
+  showStatus("Loading today's creators…");
+  try {
+    const [creatorsRes, videosRes] = await Promise.all([
+      fetch("data/creators.json"),
+      fetch("data/videos.json"),
+    ]);
+    if (!creatorsRes.ok || !videosRes.ok) {
+      throw new Error("Fetch failed: " + creatorsRes.status + " / " + videosRes.status);
+    }
+    const rawCreators = await creatorsRes.json();
+    const rawVideos = await videosRes.json();
+
+    creators = rawCreators;
+    videos = Object.entries(rawVideos).map(([id, v]) => ({
+      id,
+      title: v.title || "(untitled)",
+      url: v.url,
+      creators: v.creatorIds || [],
+    }));
+
+    const creatorIds = Object.keys(creators);
+
+    if (creatorIds.length < 2) {
+      showStatus(
+        "No creators in the database yet.\n\n" +
+        "data/creators.json and data/videos.json are still empty — seed them " +
+        "(e.g. with a hub video via scripts/parse-hub-list.js) before the game " +
+        "has anything to play with."
+      );
+      return;
+    }
+
+    [START, TARGET] = pickDailyPair(creatorIds);
+    currentCreator = START;
+    chain = [START];
+    usedVideos = [];
+
+    hideStatus();
+    initGame();
+  } catch (err) {
+    showStatus(
+      "Couldn't load the creator database.\n\n" +
+      "If you're opening this file directly (file://), fetch() won't work — " +
+      "run it through a local server or GitHub Pages instead.\n\n" +
+      "(" + err.message + ")"
+    );
+  }
+}
 
 /* ---------- HELPERS ---------- */
 
@@ -259,10 +324,12 @@ function fakeDetectPoster(link) {
 
 /* ---------- RENDER: HEADER ---------- */
 
-document.getElementById("start-avatar").textContent = initials(creators[START].name);
-document.getElementById("start-name").textContent = creators[START].name;
-document.getElementById("target-avatar").textContent = initials(creators[TARGET].name);
-document.getElementById("target-name").textContent = creators[TARGET].name;
+function renderHeader() {
+  document.getElementById("start-avatar").textContent = initials(creators[START].name);
+  document.getElementById("start-name").textContent = creators[START].name;
+  document.getElementById("target-avatar").textContent = initials(creators[TARGET].name);
+  document.getElementById("target-name").textContent = creators[TARGET].name;
+}
 
 /* ---------- RENDER: TRAIL ---------- */
 
@@ -482,8 +549,13 @@ function showWinScreen() {
 
 /* ---------- INIT ---------- */
 
-renderTrail();
-showVideoStep();
+function initGame() {
+  renderHeader();
+  renderTrail();
+  showVideoStep();
+}
+
+loadData();
 </script>
 </body>
 </html>
