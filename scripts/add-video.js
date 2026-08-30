@@ -62,14 +62,40 @@ function extractVideoId(url) {
   return null;
 }
 
+// Reserved YouTube path segments that are NOT channel vanity names — needed
+// so the bare-vanity-URL pattern below doesn't misfire on things like
+// youtube.com/watch, youtube.com/redirect, youtube.com/hashtag/..., etc.
+const RESERVED_PATHS = [
+  "watch", "results", "playlist", "feed", "feeds", "channel", "user", "c",
+  "redirect", "shorts", "hashtag", "embed", "v", "attribution_link",
+  "oembed", "premium", "gaming", "about", "upload", "account", "live",
+  "trending", "subscription_center", "howyoutubeworks", "jobs", "creators",
+  "ads", "reporthistory", "clip",
+];
+
 function extractChannelRefs(text) {
   if (!text) return [];
   const refs = new Set();
+
   const idPattern = /channel\/(UC[\w-]{10,})/g;
   const handlePattern = /youtube\.com\/@([\w.-]+)/g;
+  // Legacy /user/NAME links
+  const userPattern = /youtube\.com\/user\/([\w-]+)/g;
+  // Legacy bare vanity links, e.g. youtube.com/seanklitzner — these predate
+  // the @handle system. Excludes reserved paths via negative lookahead so it
+  // doesn't misfire on youtube.com/watch, /redirect, /hashtag/..., etc.
+  const reservedAlternation = RESERVED_PATHS.join("|");
+  const vanityPattern = new RegExp(
+    `youtube\\.com\\/(?!(?:${reservedAlternation})\\b)([\\w-]{2,})(?![\\w-])`,
+    "g"
+  );
+
   let m;
   while ((m = idPattern.exec(text))) refs.add("id:" + m[1]);
   while ((m = handlePattern.exec(text))) refs.add("handle:" + m[1]);
+  while ((m = userPattern.exec(text))) refs.add("username:" + m[1]);
+  while ((m = vanityPattern.exec(text))) refs.add("username:" + m[1]);
+
   return [...refs];
 }
 
@@ -123,6 +149,27 @@ async function resolveChannelByHandle(handle) {
   };
 }
 
+async function resolveChannelByUsername(username) {
+  // Legacy parameter — covers both youtube.com/user/NAME and the older bare
+  // youtube.com/NAME vanity URLs. Not every legacy vanity URL is a real
+  // "username" in the API's sense (some are custom URLs with no username
+  // backing them at all), so this can legitimately come back empty even for
+  // a real, active channel — that's a limitation of the old API surface,
+  // not a bug here.
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&forUsername=${username}&key=${API_KEY}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.error) throw new Error("channels.list (forUsername) error: " + data.error.message);
+  const item = data.items && data.items[0];
+  if (!item) return null;
+  return {
+    id: item.id,
+    name: item.snippet.title,
+    handle: item.snippet.customUrl || null,
+    avatar: item.snippet.thumbnails?.default?.url || null,
+  };
+}
+
 function loadJson(filePath) {
   if (!fs.existsSync(filePath)) return {};
   const raw = fs.readFileSync(filePath, "utf8").trim();
@@ -164,22 +211,28 @@ async function main() {
     } else if (kind === "handle") {
       // We don't know the real ID yet — resolve by handle, add the result's real ID after.
       toResolve.set("handle:" + value, { by: "handle", value });
+    } else if (kind === "username") {
+      toResolve.set("username:" + value, { by: "username", value });
     }
   }
 
   const newlyResolved = {};
+  const unresolved = [];
   for (const [key, task] of toResolve) {
-    console.log(`→ Resolving ${task.by === "id" ? task.value : "@" + task.value} via channels.list (1 unit)...`);
-    const result = task.by === "id"
-      ? await resolveChannelById(task.value)
-      : await resolveChannelByHandle(task.value);
+    const label = task.by === "id" ? task.value : task.by === "handle" ? "@" + task.value : task.value;
+    console.log(`→ Resolving ${label} via channels.list (1 unit)...`);
+    let result;
+    if (task.by === "id") result = await resolveChannelById(task.value);
+    else if (task.by === "handle") result = await resolveChannelByHandle(task.value);
+    else result = await resolveChannelByUsername(task.value);
 
     if (!result) {
-      console.warn(`  ⚠ Could not resolve ${task.value} — skipping.`);
+      console.warn(`  ⚠ Could not resolve ${label} — skipping (legacy vanity URLs don't always map cleanly).`);
+      unresolved.push(label);
       continue;
     }
     newlyResolved[result.id] = result;
-    if (task.by === "handle") linkedIds.add(result.id);
+    if (task.by === "handle" || task.by === "username") linkedIds.add(result.id);
   }
 
   // Merge newly resolved creators into creators.json (don't clobber existing entries).
@@ -201,6 +254,11 @@ async function main() {
 
   console.log(`\n✔ Added "${oembed.title}"`);
   console.log(`  Creators: ${allCreatorIds.map(id => creators[id].name).join(", ")}`);
+  if (unresolved.length) {
+    console.log(`\n⚠ ${unresolved.length} reference(s) couldn't be resolved automatically:`);
+    unresolved.forEach(u => console.log("  -", u));
+    console.log("  These likely need manual entry — search their name + \"youtube\" to find the current channel.");
+  }
   console.log(`\nReview with: git diff data/`);
 }
 
