@@ -24,6 +24,14 @@
  *   4. Stop when the queue is empty, OR total creators reaches MAX_CREATORS
  *      (500 by default) — whichever comes first.
  *
+ * Re-running this script (e.g. after raising MAX_CREATORS) is safe and
+ * reasonably cheap: it re-fetches RSS feeds for previously-visited creators
+ * (free) but skips any video already in videos.json before doing any
+ * channel-resolution work, so you're not re-spending quota on refs you've
+ * already resolved. It'll only do new work for videos it hasn't seen
+ * before — either genuinely new uploads, or creators newly reachable
+ * because the cap is now higher.
+ *
  * This does NOT commit or push anything. Review with `git diff data/`
  * before committing, and expect to spend real time reviewing a crawl this
  * size before treating it as trustworthy — this is a bulk discovery tool,
@@ -38,8 +46,9 @@ const API_KEY = process.env.YOUTUBE_API_KEY;
 const DATA_DIR = path.join(__dirname, "..", "data");
 const CREATORS_PATH = path.join(DATA_DIR, "creators.json");
 const VIDEOS_PATH = path.join(DATA_DIR, "videos.json");
+const BANNED_PATH = path.join(DATA_DIR, "banned-creators.json");
 
-const MAX_CREATORS = 500;   // primary stop condition, per plan
+const MAX_CREATORS = 1000;   // primary stop condition, per plan
 const REQUEST_DELAY_MS = 300; // be polite to the unauthenticated RSS endpoint
 
 function fail(msg) {
@@ -102,10 +111,11 @@ async function fetchFeed(channelId) {
 async function main() {
   const creators = loadJson(CREATORS_PATH);
   const videos = loadJson(VIDEOS_PATH);
+  const banned = loadJson(BANNED_PATH);
 
-  const startingIds = Object.keys(creators);
+  const startingIds = Object.keys(creators).filter((id) => !banned[id]);
   if (startingIds.length === 0) {
-    fail("data/creators.json is empty — seed at least one creator (e.g. via add-video.js) before crawling.");
+    fail("data/creators.json is empty (or everything in it is banned) — seed at least one creator before crawling.");
   }
 
   const queue = [...startingIds];
@@ -118,6 +128,7 @@ async function main() {
   while (queue.length > 0 && Object.keys(creators).length < MAX_CREATORS) {
     const channelId = queue.shift();
     if (visited.has(channelId)) continue;
+    if (banned[channelId]) continue; // shouldn't normally reach here given filtering elsewhere, but stay safe
     visited.add(channelId);
 
     const name = creators[channelId]?.name || channelId;
@@ -136,6 +147,8 @@ async function main() {
     }
 
     for (const entry of feedEntries) {
+      if (videos[entry.videoId]) continue; // already processed in a prior run — skip entirely, no re-resolving
+
       const refs = extractChannelRefs(entry.description);
       if (refs.length === 0) continue; // most videos — no mentions, skip entirely
 
@@ -144,6 +157,7 @@ async function main() {
         const [kind, value] = ref.split(":");
 
         if (kind === "id") {
+          if (banned[value]) continue; // never resolve or include a banned channel ID
           if (creators[value]) {
             mentionedIds.add(value);
             continue;
@@ -162,6 +176,10 @@ async function main() {
         }
         if (!result) {
           console.warn(`    ⚠ Could not resolve ${label} — skipping this mention.`);
+          continue;
+        }
+        if (banned[result.id]) {
+          console.log(`    (skipping ${result.name} — on the banned list)`);
           continue;
         }
 

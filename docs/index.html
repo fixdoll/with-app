@@ -240,17 +240,28 @@ function pickDailyPair(ids) {
 async function loadData() {
   showStatus("Loading today's creators…");
   try {
-    const [creatorsRes, videosRes] = await Promise.all([
+    const [creatorsRes, videosRes, bannedRes] = await Promise.all([
       fetch("data/creators.json"),
       fetch("data/videos.json"),
+      fetch("data/banned-creators.json"),
     ]);
     if (!creatorsRes.ok || !videosRes.ok) {
       throw new Error("Fetch failed: " + creatorsRes.status + " / " + videosRes.status);
     }
     const rawCreators = await creatorsRes.json();
     const rawVideos = await videosRes.json();
+    const rawBanned = bannedRes.ok ? await bannedRes.json() : {};
 
     creators = rawCreators;
+
+    // Remove banned creators entirely from the working set. Everything else
+    // downstream checks `creators[id]` before showing a name/avatar/pick
+    // option, so deleting them here is sufficient to keep them from ever
+    // surfacing — even if they're still listed in some video's creatorIds.
+    for (const bannedId of Object.keys(rawBanned)) {
+      delete creators[bannedId];
+    }
+
     videos = Object.entries(rawVideos).map(([id, v]) => ({
       id,
       title: v.title || "(untitled)",
@@ -295,7 +306,11 @@ function initials(name) {
 }
 
 function videosFor(creatorId) {
-  return videos.filter(v => v.creators.includes(creatorId));
+  return videos.filter(v => {
+    if (!v.creators.includes(creatorId)) return false;
+    const others = v.creators.filter(id => id !== creatorId && creators[id]);
+    return others.length > 0;
+  });
 }
 
 function extractVideoId(url) {
@@ -399,7 +414,7 @@ searchBox.addEventListener("input", () => {
 /* ---------- STEP 2: CREATOR GRID ---------- */
 
 function showCreatorStep(video) {
-  const others = video.creators.filter(id => id !== currentCreator);
+  const others = video.creators.filter(id => id !== currentCreator && creators[id]);
   stepLabel.textContent = `Who else is in "${video.title}"?`;
   searchBox.style.display = "none";
   submitToggle.style.display = "none";

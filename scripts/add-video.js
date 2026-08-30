@@ -34,6 +34,7 @@ const API_KEY = process.env.YOUTUBE_API_KEY;
 const DATA_DIR = path.join(__dirname, "..", "data");
 const CREATORS_PATH = path.join(DATA_DIR, "creators.json");
 const VIDEOS_PATH = path.join(DATA_DIR, "videos.json");
+const BANNED_PATH = path.join(DATA_DIR, "banned-creators.json");
 
 function fail(msg) {
   console.error("✖ " + msg);
@@ -105,6 +106,11 @@ async function main() {
 
   const creators = loadJson(CREATORS_PATH);
   const videos = loadJson(VIDEOS_PATH);
+  const banned = loadJson(BANNED_PATH);
+
+  if (banned[posterId]) {
+    fail(`Poster (${banned[posterId].name || posterId}) is on the banned list — not adding this video.`);
+  }
 
   const refs = extractChannelRefs(description);
   console.log(`→ Found ${refs.length} channel reference(s) in the description.`);
@@ -116,6 +122,7 @@ async function main() {
   for (const ref of refs) {
     const [kind, value] = ref.split(":");
     if (kind === "id") {
+      if (banned[value]) continue; // never resolve or include a banned channel ID
       linkedIds.add(value);
       if (!creators[value]) toResolve.set(ref, { kind, value });
     } else {
@@ -133,6 +140,10 @@ async function main() {
     if (!result) {
       console.warn(`  ⚠ Could not resolve ${label} — skipping (legacy vanity URLs don't always map cleanly).`);
       unresolved.push(label);
+      continue;
+    }
+    if (banned[result.id]) {
+      console.log(`  (skipping ${result.name} — on the banned list)`);
       continue;
     }
     newlyResolved[result.id] = result;
