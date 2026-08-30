@@ -255,6 +255,7 @@ async function loadData() {
       id,
       title: v.title || "(untitled)",
       url: v.url,
+      thumbnail: v.thumbnail || null,
       creators: v.creatorIds || [],
     }));
 
@@ -381,7 +382,10 @@ function renderVideoGrid(list) {
   list.forEach(v => {
     const card = document.createElement("div");
     card.className = "video-card";
-    card.innerHTML = `<div class="thumb">▶</div><div class="video-title">${v.title}</div>`;
+    const thumbHtml = v.thumbnail
+      ? `<div class="thumb" style="background-image:url('${v.thumbnail}');background-size:cover;background-position:center;"></div>`
+      : `<div class="thumb">▶</div>`;
+    card.innerHTML = `${thumbHtml}<div class="video-title">${v.title}</div>`;
     card.onclick = () => showCreatorStep(v);
     videoGrid.appendChild(card);
   });
