@@ -17,6 +17,11 @@ const RESERVED_PATHS = [
   "ads", "reporthistory", "clip",
 ];
 
+// Invisible bidi/directional-formatting characters YouTube wraps around
+// native @mentions (e.g. U+202A...U+202C). Strip these before scanning so
+// they can't split a match or hide inside one.
+const BIDI_CONTROL_CHARS = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g;
+
 /**
  * Extract every channel reference from a block of text (typically a video
  * description). Returns an array of "kind:value" strings — kind is one of
@@ -25,11 +30,25 @@ const RESERVED_PATHS = [
  */
 function extractChannelRefs(text) {
   if (!text) return [];
+  const clean = text.replace(BIDI_CONTROL_CHARS, "");
   const refs = new Set();
 
   const idPattern = /channel\/(UC[\w-]{10,})/g;
   const handlePattern = /youtube\.com\/@([\w.-]+)/g;
   const userPattern = /youtube\.com\/user\/([\w-]+)/g;
+
+  // Bare @handle mentions — YouTube's native @mention feature (the little
+  // clickable chip from typing @ and picking a channel from autocomplete)
+  // apparently stores the raw description as just "@handle", not a full
+  // URL — the link only gets generated client-side when YouTube renders
+  // the page. A regex looking only for "youtube.com/@..." finds nothing at
+  // all for these, which was a real gap, not a false negative on our end.
+  //
+  // Requires the character before "@" to NOT be a word character or a dot,
+  // specifically so this doesn't fire on email addresses like
+  // "name@example.com", where "@" is directly preceded by the local part
+  // with no separator.
+  const bareHandlePattern = /(?<![\w.])@([\w.]{2,30})/g;
 
   // IMPORTANT: the \b must wrap the WHOLE alternation group, not just the
   // last entry — otherwise short reserved entries like "v" or "c" wrongly
@@ -42,10 +61,11 @@ function extractChannelRefs(text) {
   );
 
   let m;
-  while ((m = idPattern.exec(text))) refs.add("id:" + m[1]);
-  while ((m = handlePattern.exec(text))) refs.add("handle:" + m[1]);
-  while ((m = userPattern.exec(text))) refs.add("username:" + m[1]);
-  while ((m = vanityPattern.exec(text))) refs.add("username:" + m[1]);
+  while ((m = idPattern.exec(clean))) refs.add("id:" + m[1]);
+  while ((m = handlePattern.exec(clean))) refs.add("handle:" + m[1]);
+  while ((m = userPattern.exec(clean))) refs.add("username:" + m[1]);
+  while ((m = vanityPattern.exec(clean))) refs.add("username:" + m[1]);
+  while ((m = bareHandlePattern.exec(clean))) refs.add("handle:" + m[1]);
 
   return [...refs];
 }
@@ -128,7 +148,7 @@ async function resolveRef(apiKey, kind, value) {
 // trustworthy signal rather than a coverage gap. Toggle independently here,
 // not per-script, so both crawl-rss.js and prune-low-signal.js can never
 // drift out of sync with each other again.
-const MIN_SUBSCRIBERS = 100000;
+const MIN_SUBSCRIBERS = 1000;
 const MIN_VIDEOS = 3;
 const ENABLE_SUBSCRIBER_FILTER = true;
 const ENABLE_VIDEO_COUNT_FILTER = false;
