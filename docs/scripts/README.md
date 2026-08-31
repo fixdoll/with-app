@@ -40,16 +40,19 @@ skim before trusting, same as any other automated pass.
     videos — this is by design, not a bug).
   - Otherwise adds the video (poster + mentioned creators) and enqueues any
     newly-found creators for their own crawl pass.
+  - **Filters low-signal channels** before adding a new creator: anyone
+    under `MIN_SUBSCRIBERS` (1000) or `MIN_VIDEOS` (3) — both constants at
+    the top of the file — gets pruned immediately instead of added. This is
+    what mainly catches second channels and featured-artist credits, which
+    reliably skew low on both. A hidden subscriber count or missing video
+    count never counts against a channel — only genuinely low numbers do.
   - **Prunes** any creator whose RSS feed comes back completely empty
     (private, deleted, or never posted) — removes them from
     `creators.json`, strips them from any video's `creatorIds` (deleting
     the video too if that drops it below 2 valid creators), and records
     them in `data/pruned-creators.json` so future crawls skip them
-    instantly instead of re-discovering and re-pruning the same
-    unrecognizable channel every time they're mentioned elsewhere. This
-    also keeps the 500-cap budget from being spent on people who'd never
-    be a satisfying answer in-game anyway (often editors/musicians credited
-    on someone else's video, not creators in their own right).
+    instantly instead of re-discovering and re-pruning the same channel
+    every time they're mentioned elsewhere.
   - **Keeps running past `MAX_CREATORS`** rather than stopping there: once
     the cap is hit, new creators stop being added, but the crawl keeps
     visiting everyone already known, and still adds videos that connect
@@ -61,6 +64,19 @@ skim before trusting, same as any other automated pass.
   Only costs quota on `channels.list` resolution calls (1 unit each) — RSS
   fetches are free. Safe to re-run at any time, including after raising
   `MAX_CREATORS` — see the comment header in the file for details.
+
+- **`prune-low-signal.js`** — *implemented.* One-time retroactive cleanup:
+  checks every creator ALREADY in `creators.json` against the same
+  subscriber/video-count thresholds and prunes anyone who falls short.
+
+    ```
+    YOUTUBE_API_KEY=xxxx node scripts/prune-low-signal.js
+    ```
+
+  Worth running once against a database that predates the threshold filter
+  above. Costs 1 unit per existing creator — cheap even for a few hundred
+  entries. Review the diff before committing; a first run against an older
+  database could remove a meaningful chunk of it.
 
 - **`lib/youtube.js`** — shared helpers used by both scripts above:
   channel-reference extraction (handles `/channel/UC...`, `/@handle`,

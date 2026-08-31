@@ -54,8 +54,16 @@ const VIDEOS_PATH = path.join(DATA_DIR, "videos.json");
 const BANNED_PATH = path.join(DATA_DIR, "banned-creators.json");
 const PRUNED_PATH = path.join(DATA_DIR, "pruned-creators.json");
 
-const MAX_CREATORS = 1200; // stops new creators from being added past this point — does not stop the crawl itself
+const MAX_CREATORS = 500; // stops new creators from being added past this point — does not stop the crawl itself
+const MIN_SUBSCRIBERS = 1000; // below this, likely a second channel / featured-artist credit rather than a recognizable creator — null (hidden count) always passes
+const MIN_VIDEOS = 3; // below this, likely a near-empty or single-upload channel — NaN (missing data) always passes
 const REQUEST_DELAY_MS = 300; // be polite to the unauthenticated RSS endpoint
+
+function meetsSignalThreshold(stats) {
+  const subsOk = stats.subscriberCount === null || Number.isNaN(stats.subscriberCount) || stats.subscriberCount >= MIN_SUBSCRIBERS;
+  const videosOk = Number.isNaN(stats.videoCount) || stats.videoCount >= MIN_VIDEOS;
+  return subsOk && videosOk;
+}
 
 function fail(msg) {
   console.error("✖ " + msg);
@@ -232,6 +240,15 @@ async function main() {
         }
         if (capped) {
           console.log(`    (found new creator ${result.name}, but at cap — not adding)`);
+          continue;
+        }
+        if (!meetsSignalThreshold(result)) {
+          pruned[result.id] = {
+            name: result.name,
+            reason: `low signal (${result.subscriberCount ?? "hidden"} subscribers, ${result.videoCount} videos) — likely a second channel or featured-artist credit`,
+          };
+          creatorsPruned++;
+          console.log(`    (skipping ${result.name} — low signal, likely not a recognizable creator)`);
           continue;
         }
 

@@ -51,7 +51,7 @@ function extractChannelRefs(text) {
 }
 
 async function resolveChannelById(apiKey, channelId) {
-  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${channelId}&key=${apiKey}`;
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${apiKey}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) throw new Error("channels.list error: " + data.error.message);
@@ -62,11 +62,13 @@ async function resolveChannelById(apiKey, channelId) {
     name: item.snippet.title,
     handle: item.snippet.customUrl || null,
     avatar: item.snippet.thumbnails?.default?.url || null,
+    subscriberCount: item.statistics?.hiddenSubscriberCount ? null : Number(item.statistics?.subscriberCount ?? NaN),
+    videoCount: Number(item.statistics?.videoCount ?? NaN),
   };
 }
 
 async function resolveChannelByHandle(apiKey, handle) {
-  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=${handle}&key=${apiKey}`;
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${handle}&key=${apiKey}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) throw new Error("channels.list (forHandle) error: " + data.error.message);
@@ -77,6 +79,8 @@ async function resolveChannelByHandle(apiKey, handle) {
     name: item.snippet.title,
     handle: "@" + handle,
     avatar: item.snippet.thumbnails?.default?.url || null,
+    subscriberCount: item.statistics?.hiddenSubscriberCount ? null : Number(item.statistics?.subscriberCount ?? NaN),
+    videoCount: Number(item.statistics?.videoCount ?? NaN),
   };
 }
 
@@ -84,7 +88,7 @@ async function resolveChannelByUsername(apiKey, username) {
   // Legacy parameter. Covers /user/NAME and old bare vanity URLs. Not every
   // legacy vanity URL is backed by a real "username" in the API's sense —
   // this can legitimately come back empty even for a real, active channel.
-  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&forUsername=${username}&key=${apiKey}`;
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forUsername=${username}&key=${apiKey}`;
   const res = await fetch(url);
   const data = await res.json();
   if (data.error) throw new Error("channels.list (forUsername) error: " + data.error.message);
@@ -95,6 +99,8 @@ async function resolveChannelByUsername(apiKey, username) {
     name: item.snippet.title,
     handle: item.snippet.customUrl || null,
     avatar: item.snippet.thumbnails?.default?.url || null,
+    subscriberCount: item.statistics?.hiddenSubscriberCount ? null : Number(item.statistics?.subscriberCount ?? NaN),
+    videoCount: Number(item.statistics?.videoCount ?? NaN),
   };
 }
 
