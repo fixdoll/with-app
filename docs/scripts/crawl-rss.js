@@ -54,7 +54,7 @@ const VIDEOS_PATH = path.join(DATA_DIR, "videos.json");
 const BANNED_PATH = path.join(DATA_DIR, "banned-creators.json");
 const PRUNED_PATH = path.join(DATA_DIR, "pruned-creators.json");
 
-const MAX_CREATORS = 500; // stops new creators from being added past this point — does not stop the crawl itself
+const MAX_CREATORS = 1500; // stops new creators from being added past this point — does not stop the crawl itself
 const REQUEST_DELAY_MS = 300; // be polite to the unauthenticated RSS endpoint
 
 function fail(msg) {
