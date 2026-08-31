@@ -117,6 +117,35 @@ async function resolveRef(apiKey, kind, value) {
   throw new Error("Unknown ref kind: " + kind);
 }
 
+// --- Low-signal filtering config ---
+// Subscriber count is a reasonable recognizability proxy on its own.
+// Video count is NOT currently reliable as an exclusion signal: our own
+// crawl coverage is thin (RSS only ever sees a creator's last 15 uploads,
+// and a creator might only have been discovered via one hub video so far),
+// so a low observed video count often just means "we haven't found much of
+// their catalog yet," not "this isn't a real channel." Keep the video-count
+// filter OFF until crawl coverage is broad enough that a low count is a
+// trustworthy signal rather than a coverage gap. Toggle independently here,
+// not per-script, so both crawl-rss.js and prune-low-signal.js can never
+// drift out of sync with each other again.
+const MIN_SUBSCRIBERS = 1000;
+const MIN_VIDEOS = 3;
+const ENABLE_SUBSCRIBER_FILTER = true;
+const ENABLE_VIDEO_COUNT_FILTER = false;
+
+function meetsSignalThreshold(stats) {
+  const subsOk =
+    !ENABLE_SUBSCRIBER_FILTER ||
+    stats.subscriberCount === null ||
+    Number.isNaN(stats.subscriberCount) ||
+    stats.subscriberCount >= MIN_SUBSCRIBERS;
+  const videosOk =
+    !ENABLE_VIDEO_COUNT_FILTER ||
+    Number.isNaN(stats.videoCount) ||
+    stats.videoCount >= MIN_VIDEOS;
+  return subsOk && videosOk;
+}
+
 module.exports = {
   RESERVED_PATHS,
   extractChannelRefs,
@@ -124,4 +153,9 @@ module.exports = {
   resolveChannelByHandle,
   resolveChannelByUsername,
   resolveRef,
+  meetsSignalThreshold,
+  MIN_SUBSCRIBERS,
+  MIN_VIDEOS,
+  ENABLE_SUBSCRIBER_FILTER,
+  ENABLE_VIDEO_COUNT_FILTER,
 };

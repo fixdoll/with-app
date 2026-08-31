@@ -45,7 +45,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { extractChannelRefs, resolveRef } = require("./lib/youtube");
+const { extractChannelRefs, resolveRef, meetsSignalThreshold, MIN_SUBSCRIBERS, MIN_VIDEOS, ENABLE_SUBSCRIBER_FILTER, ENABLE_VIDEO_COUNT_FILTER } = require("./lib/youtube");
 
 const API_KEY = process.env.YOUTUBE_API_KEY;
 const DATA_DIR = path.join(__dirname, "..", "data");
@@ -55,15 +55,7 @@ const BANNED_PATH = path.join(DATA_DIR, "banned-creators.json");
 const PRUNED_PATH = path.join(DATA_DIR, "pruned-creators.json");
 
 const MAX_CREATORS = 500; // stops new creators from being added past this point — does not stop the crawl itself
-const MIN_SUBSCRIBERS = 1000; // below this, likely a second channel / featured-artist credit rather than a recognizable creator — null (hidden count) always passes
-const MIN_VIDEOS = 3; // below this, likely a near-empty or single-upload channel — NaN (missing data) always passes
 const REQUEST_DELAY_MS = 300; // be polite to the unauthenticated RSS endpoint
-
-function meetsSignalThreshold(stats) {
-  const subsOk = stats.subscriberCount === null || Number.isNaN(stats.subscriberCount) || stats.subscriberCount >= MIN_SUBSCRIBERS;
-  const videosOk = Number.isNaN(stats.videoCount) || stats.videoCount >= MIN_VIDEOS;
-  return subsOk && videosOk;
-}
 
 function fail(msg) {
   console.error("✖ " + msg);
@@ -243,12 +235,15 @@ async function main() {
           continue;
         }
         if (!meetsSignalThreshold(result)) {
+          const subsBad = ENABLE_SUBSCRIBER_FILTER && result.subscriberCount !== null && !Number.isNaN(result.subscriberCount) && result.subscriberCount < MIN_SUBSCRIBERS;
+          const videosBad = ENABLE_VIDEO_COUNT_FILTER && !Number.isNaN(result.videoCount) && result.videoCount < MIN_VIDEOS;
+          const causes = [subsBad && "low subscribers", videosBad && "low video count"].filter(Boolean).join(" + ");
           pruned[result.id] = {
             name: result.name,
-            reason: `low signal (${result.subscriberCount ?? "hidden"} subscribers, ${result.videoCount} videos) — likely a second channel or featured-artist credit`,
+            reason: `${causes} (${result.subscriberCount ?? "hidden"} subscribers, ${result.videoCount} videos) — likely a second channel or featured-artist credit`,
           };
           creatorsPruned++;
-          console.log(`    (skipping ${result.name} — low signal, likely not a recognizable creator)`);
+          console.log(`    (skipping ${result.name} — ${causes})`);
           continue;
         }
 

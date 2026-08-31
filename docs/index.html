@@ -308,6 +308,15 @@ function initials(name) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
+function shuffle(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 function videosFor(creatorId) {
   return videos.filter(v => {
     if (!v.creators.includes(creatorId)) return false;
@@ -378,6 +387,8 @@ const searchBox = document.getElementById("search");
 const submitToggle = document.getElementById("submit-toggle");
 const submitFlow = document.getElementById("submit-flow");
 
+let currentVideoList = []; // shuffled once per step-entry; search filters this, doesn't reshuffle
+
 function showVideoStep() {
   const name = creators[currentCreator].name;
   stepLabel.textContent = `Pick a video ${name} appeared in`;
@@ -388,7 +399,8 @@ function showVideoStep() {
   submitFlow.style.display = "none";
   videoGrid.style.display = "grid";
   creatorGrid.style.display = "none";
-  renderVideoGrid(videosFor(currentCreator));
+  currentVideoList = shuffle(videosFor(currentCreator));
+  renderVideoGrid(currentVideoList);
 }
 
 function renderVideoGrid(list) {
@@ -411,13 +423,13 @@ function renderVideoGrid(list) {
 
 searchBox.addEventListener("input", () => {
   const q = searchBox.value.toLowerCase();
-  renderVideoGrid(videosFor(currentCreator).filter(v => v.title.toLowerCase().includes(q)));
+  renderVideoGrid(currentVideoList.filter(v => v.title.toLowerCase().includes(q)));
 });
 
 /* ---------- STEP 2: CREATOR GRID ---------- */
 
 function showCreatorStep(video) {
-  const others = video.creators.filter(id => id !== currentCreator && creators[id]);
+  const others = shuffle(video.creators.filter(id => id !== currentCreator && creators[id]));
   stepLabel.textContent = `Who else is in "${video.title}"?`;
   searchBox.style.display = "none";
   submitToggle.style.display = "none";

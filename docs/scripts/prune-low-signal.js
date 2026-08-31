@@ -28,7 +28,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { resolveChannelById } = require("./lib/youtube");
+const { resolveChannelById, meetsSignalThreshold, MIN_SUBSCRIBERS, MIN_VIDEOS, ENABLE_SUBSCRIBER_FILTER, ENABLE_VIDEO_COUNT_FILTER } = require("./lib/youtube");
 
 const API_KEY = process.env.YOUTUBE_API_KEY;
 const DATA_DIR = path.join(__dirname, "..", "data");
@@ -36,10 +36,8 @@ const CREATORS_PATH = path.join(DATA_DIR, "creators.json");
 const VIDEOS_PATH = path.join(DATA_DIR, "videos.json");
 const PRUNED_PATH = path.join(DATA_DIR, "pruned-creators.json");
 
-// Keep these in sync with crawl-rss.js — consider factoring into lib/ if
-// they drift apart more than once.
-const MIN_SUBSCRIBERS = 1000;
-const MIN_VIDEOS = 3;
+// Threshold constants and meetsSignalThreshold now live in lib/youtube.js —
+// single source of truth shared with crawl-rss.js.
 const REQUEST_DELAY_MS = 300;
 
 function fail(msg) {
@@ -63,12 +61,6 @@ function saveJson(filePath, obj) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function meetsSignalThreshold(stats) {
-  const subsOk = stats.subscriberCount === null || Number.isNaN(stats.subscriberCount) || stats.subscriberCount >= MIN_SUBSCRIBERS;
-  const videosOk = Number.isNaN(stats.videoCount) || stats.videoCount >= MIN_VIDEOS;
-  return subsOk && videosOk;
 }
 
 function pruneCreator(channelId, creators, videos, pruned, reason) {
@@ -118,15 +110,18 @@ async function main() {
     }
 
     if (!meetsSignalThreshold(stats)) {
+      const subsBad = ENABLE_SUBSCRIBER_FILTER && stats.subscriberCount !== null && !Number.isNaN(stats.subscriberCount) && stats.subscriberCount < MIN_SUBSCRIBERS;
+      const videosBad = ENABLE_VIDEO_COUNT_FILTER && !Number.isNaN(stats.videoCount) && stats.videoCount < MIN_VIDEOS;
+      const causes = [subsBad && "low subscribers", videosBad && "low video count"].filter(Boolean).join(" + ");
       pruneCreator(
         id,
         creators,
         videos,
         pruned,
-        `low signal (${stats.subscriberCount ?? "hidden"} subscribers, ${stats.videoCount} videos) — likely a second channel or featured-artist credit`
+        `${causes} (${stats.subscriberCount ?? "hidden"} subscribers, ${stats.videoCount} videos) — likely a second channel or featured-artist credit`
       );
       prunedCount++;
-      console.log(`  ✂ [${checked}/${ids.length}] Pruned ${name} (${stats.subscriberCount ?? "hidden"} subs, ${stats.videoCount} videos)`);
+      console.log(`  ✂ [${checked}/${ids.length}] Pruned ${name} — ${causes} (${stats.subscriberCount ?? "hidden"} subs, ${stats.videoCount} videos)`);
     } else {
       console.log(`  ✔ [${checked}/${ids.length}] ${name} OK (${stats.subscriberCount ?? "hidden"} subs, ${stats.videoCount} videos)`);
     }
