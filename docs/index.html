@@ -564,12 +564,41 @@ confirmBtn.onclick = () => {
   });
 
   const provisionalVideo = { id: videoId, title: "Submitted: " + link.slice(0, 24), creators: creatorIds };
-  videos.push(provisionalVideo); // in the real app: fire GitHub Issue here instead of a hard push
+  videos.push(provisionalVideo);
+
+  // Fire the real submission in the background. This is deliberately
+  // "fire and forget" from the player's perspective — the hop above has
+  // already been accepted locally regardless of whether this succeeds.
+  // Network failure, an offline worker, or a slow response should never
+  // block or undo something the player already did (see the provisional-
+  // accept decision from earlier design discussion).
+  submitToGitHub(link, names.join(", "));
 
   submitFlow.style.display = "none";
   stepLabel.style.display = "";
   showCreatorStep(provisionalVideo);
 };
+
+// Deployed Cloudflare Worker URL — see /worker/README.md for setup. Empty
+// string means submissions are accepted locally in-session but never sent
+// anywhere for review; fine for local testing, not for a real deployment.
+const SUBMIT_ENDPOINT = "";
+
+function submitToGitHub(videoUrl, creatorsText) {
+  if (!SUBMIT_ENDPOINT) {
+    console.warn("SUBMIT_ENDPOINT not configured — submission accepted locally only, not sent for review.");
+    return;
+  }
+  fetch(SUBMIT_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ videoUrl, creators: creatorsText, notes: "" }),
+  }).catch(err => {
+    // Deliberately silent to the player — see comment above. Logged for
+    // your own debugging only.
+    console.warn("Submission delivery failed (player experience unaffected):", err.message);
+  });
+}
 
 /* ---------- WIN SCREEN ---------- */
 

@@ -1,0 +1,34 @@
+name: Collab Submission
+description: Submit a video where two or more creators appear together
+title: "[Collab] "
+labels: ["collab-submission", "needs-review"]
+body:
+  - type: input
+    id: video-url
+    attributes:
+      label: Video URL
+      placeholder: "https://youtube.com/watch?v=..."
+    validations:
+      required: true
+  - type: input
+    id: creators
+    attributes:
+      label: Creators in this video
+      description: Channel names, comma-separated
+      placeholder: "Creator A, Creator B"
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: How was this submitted?
+      options:
+        - In-game submission form
+        - Manual (filed directly on GitHub)
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Anything that helps verify this (timestamp, context, etc.)
