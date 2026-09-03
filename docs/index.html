@@ -582,7 +582,7 @@ confirmBtn.onclick = () => {
 // Deployed Cloudflare Worker URL — see /worker/README.md for setup. Empty
 // string means submissions are accepted locally in-session but never sent
 // anywhere for review; fine for local testing, not for a real deployment.
-const SUBMIT_ENDPOINT = "https://withapp.workers.dev";
+const SUBMIT_ENDPOINT = "https://submit-collab.withapp.workers.dev/";
 
 function submitToGitHub(videoUrl, creatorsText) {
   if (!SUBMIT_ENDPOINT) {
