@@ -148,7 +148,7 @@ async function resolveRef(apiKey, kind, value) {
 // trustworthy signal rather than a coverage gap. Toggle independently here,
 // not per-script, so both crawl-rss.js and prune-low-signal.js can never
 // drift out of sync with each other again.
-const MIN_SUBSCRIBERS = 1000;
+const MIN_SUBSCRIBERS = 100000;
 const MIN_VIDEOS = 3;
 const ENABLE_SUBSCRIBER_FILTER = true;
 const ENABLE_VIDEO_COUNT_FILTER = false;
