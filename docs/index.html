@@ -163,7 +163,7 @@
   <div class="popularity-control" aria-label="Popularity influence setting">
     <label for="popularity-influence"><span>Popularity influence</span><span id="popularity-value">50%</span></label>
     <input type="range" id="popularity-influence" min="0" max="100" step="10" value="50" aria-describedby="popularity-description">
-    <div id="popularity-description" style="font-size:11px;color:var(--text-dim);margin-top:5px;">Default 50%. Higher values favor creators with more YouTube subscribers; unknown counts are neutral.</div>
+    <div id="popularity-description" style="font-size:11px;color:var(--text-dim);margin-top:5px;">Default 50%. Higher values favor creators with more YouTube subscribers. Unknown counts remain eligible but get no popularity bonus.</div>
   </div>
 
   <div id="trail"></div>
@@ -239,17 +239,19 @@ function hideStatus() {
 }
 
 /* Deterministic pick so everyone gets the same start/target on the same day,
-   without needing a precomputed shortest-path graph. Purely a placeholder
-   selection strategy — revisit once the dataset is big enough to care about
-   picking a "good" (reachable, interesting) pair rather than just "a" pair. */
+   regardless of creator record ordering. This does not check pair reachability. */
 function pickDailyPair(ids, influence = DEFAULT_POPULARITY_INFLUENCE) {
   const dayIndex = Math.floor(Date.now() / 86400000);
   // Derive a stable pseudo-random rank per creator and day, then weight it by
-  // subscriber count. Missing/invalid counts use the neutral weight of 1.
+  // subscriber count. Missing/invalid counts get no popularity bonus, but
+  // remain eligible with the same base daily rank as any other creator.
   const boundedInfluence = Math.max(0, Math.min(100, Number(influence) || 0)) / 100;
-  const ranked = ids.map((id, index) => {
-    let hash = Math.imul(dayIndex ^ (index + 1), 0x45d9f3b);
-    hash = Math.imul(hash ^ (hash >>> 16), 0x45d9f3b);
+  const ranked = ids.map((id) => {
+    let hash = dayIndex ^ 0x45d9f3b;
+    for (let i = 0; i < id.length; i++) {
+      hash = Math.imul(hash ^ id.charCodeAt(i), 0x45d9f3b);
+      hash ^= hash >>> 16;
+    }
     const random = ((hash ^ (hash >>> 16)) >>> 0) / 4294967296;
     const rawPopularity = creators[id]?.popularity;
     const count = rawPopularity == null || rawPopularity === "" ? NaN : Number(rawPopularity);
