@@ -40,12 +40,11 @@ skim before trusting, same as any other automated pass.
     videos — this is by design, not a bug).
   - Otherwise adds the video (poster + mentioned creators) and enqueues any
     newly-found creators for their own crawl pass.
-  - **Filters low-signal channels** before adding a new creator: anyone
-    under `MIN_SUBSCRIBERS` (1000) or `MIN_VIDEOS` (3) — both constants at
-    the top of the file — gets pruned immediately instead of added. This is
-    what mainly catches second channels and featured-artist credits, which
-    reliably skew low on both. A hidden subscriber count or missing video
-    count never counts against a channel — only genuinely low numbers do.
+  - **Filters newly discovered creators** before adding them: channels with
+    a visible subscriber count below the shared `MIN_SUBSCRIBERS` threshold
+    (250,000) are skipped. A hidden or unavailable subscriber count does not
+    count against a channel. The shared threshold lives in `lib/youtube.js`;
+    video-count filtering is currently disabled.
   - **Prunes** any creator whose RSS feed comes back completely empty
     (private, deleted, or never posted) — removes them from
     `creators.json`, strips them from any video's `creatorIds` (deleting
@@ -66,15 +65,19 @@ skim before trusting, same as any other automated pass.
   `MAX_CREATORS` — see the comment header in the file for details.
 
 - **`prune-low-signal.js`** — *implemented.* One-time retroactive cleanup:
-  checks every creator ALREADY in `creators.json` against the same
-  subscriber/video-count thresholds and prunes anyone who falls short.
+  checks every creator ALREADY in `creators.json` against the shared
+  250,000-subscriber threshold and prunes anyone with a visible count below
+  it. Hidden or unavailable subscriber counts are retained. Video-count
+  filtering is currently disabled. The crawler applies the threshold to
+  newly discovered creators; this script applies it to existing creators.
 
     ```
     YOUTUBE_API_KEY=xxxx node scripts/prune-low-signal.js
     ```
 
   Worth running once against a database that predates the threshold filter
-  above. Costs 1 unit per existing creator — cheap even for a few hundred
+  above. It can remove existing creators and their video connections. Costs
+  1 unit per existing creator — cheap even for a few hundred
   entries. Review the diff before committing; a first run against an older
   database could remove a meaningful chunk of it.
 
