@@ -82,6 +82,7 @@ async function resolveChannelById(apiKey, channelId) {
     name: item.snippet.title,
     handle: item.snippet.customUrl || null,
     avatar: item.snippet.thumbnails?.default?.url || null,
+    popularity: item.statistics?.hiddenSubscriberCount ? null : parseCount(item.statistics?.subscriberCount),
     subscriberCount: item.statistics?.hiddenSubscriberCount ? null : Number(item.statistics?.subscriberCount ?? NaN),
     videoCount: Number(item.statistics?.videoCount ?? NaN),
   };
@@ -99,6 +100,7 @@ async function resolveChannelByHandle(apiKey, handle) {
     name: item.snippet.title,
     handle: "@" + handle,
     avatar: item.snippet.thumbnails?.default?.url || null,
+    popularity: item.statistics?.hiddenSubscriberCount ? null : parseCount(item.statistics?.subscriberCount),
     subscriberCount: item.statistics?.hiddenSubscriberCount ? null : Number(item.statistics?.subscriberCount ?? NaN),
     videoCount: Number(item.statistics?.videoCount ?? NaN),
   };
@@ -119,9 +121,16 @@ async function resolveChannelByUsername(apiKey, username) {
     name: item.snippet.title,
     handle: item.snippet.customUrl || null,
     avatar: item.snippet.thumbnails?.default?.url || null,
+    popularity: item.statistics?.hiddenSubscriberCount ? null : parseCount(item.statistics?.subscriberCount),
     subscriberCount: item.statistics?.hiddenSubscriberCount ? null : Number(item.statistics?.subscriberCount ?? NaN),
     videoCount: Number(item.statistics?.videoCount ?? NaN),
   };
+}
+
+function parseCount(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const count = Number(value);
+  return Number.isFinite(count) ? count : null;
 }
 
 /**

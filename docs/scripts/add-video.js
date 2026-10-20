@@ -155,6 +155,9 @@ async function main() {
 
   for (const [id, info] of Object.entries(newlyResolved)) {
     creators[id] = creators[id] || { name: info.name, handle: info.handle, avatar: info.avatar };
+    if (!Object.prototype.hasOwnProperty.call(creators[id], "popularity")) {
+      creators[id].popularity = info.popularity;
+    }
   }
 
   const allCreatorIds = [posterId, ...linkedIds].filter((id, i, arr) => arr.indexOf(id) === i && creators[id]);
