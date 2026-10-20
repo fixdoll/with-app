@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Refreshes creators' popularity from YouTube subscriber counts. */
+/** Refreshes creators' popularity and channel avatars from YouTube. */
 const fs = require("fs");
 const path = require("path");
 
@@ -22,7 +22,7 @@ async function main() {
     const batch = ids.slice(i, i + 50);
     const url = new URL("https://www.googleapis.com/youtube/v3/channels");
     url.search = new URLSearchParams({
-      part: "statistics",
+      part: "snippet,statistics",
       id: batch.join(","),
       key: apiKey,
     }).toString();
@@ -32,12 +32,16 @@ async function main() {
     if (data.error) throw new Error("channels.list error: " + data.error.message);
 
     for (const channel of data.items || []) {
+      const creator = creators[channel.id];
+      if (!creator) continue;
       const raw = channel.statistics?.subscriberCount;
       const count = channel.statistics?.hiddenSubscriberCount || raw == null
         ? null
         : Number(raw);
-      creators[channel.id].popularity = Number.isSafeInteger(count) && count >= 0 ? count : null;
-      creators[channel.id].popularityUpdatedAt = new Date().toISOString().slice(0, 10);
+      creator.popularity = Number.isSafeInteger(count) && count >= 0 ? count : null;
+      creator.popularityUpdatedAt = new Date().toISOString().slice(0, 10);
+      const avatar = channel.snippet?.thumbnails?.default?.url;
+      if (typeof avatar === "string" && avatar.length > 0) creator.avatar = avatar;
       updated++;
     }
   }
