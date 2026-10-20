@@ -2,11 +2,15 @@
   "UCXXXXXXXXXXXXXXXXXXXXXXXX": {
     "name": "Creator A",
     "handle": "@creatora",
-    "avatar": "https://yt3.googleusercontent.com/placeholder-a"
+    "avatar": "https://yt3.googleusercontent.com/placeholder-a",
+    "popularity": 123456,
+    "popularityUpdatedAt": "2026-10-20"
   },
   "UCYYYYYYYYYYYYYYYYYYYYYYYY": {
     "name": "Creator B",
     "handle": "@creatorb",
-    "avatar": "https://yt3.googleusercontent.com/placeholder-b"
+    "avatar": "https://yt3.googleusercontent.com/placeholder-b",
+    "popularity": null,
+    "popularityUpdatedAt": "2026-10-20"
   }
 }

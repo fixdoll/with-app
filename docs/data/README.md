@@ -50,3 +50,9 @@ those two files are never loaded by the game, they're just documentation.
   dormant or renamed channels are still valid nodes in the graph.
 - Keep this JSON valid at all times — the game fetches it directly with no
   build step in between.
+
+## Creator popularity
+
+`popularity` is the channel's public YouTube subscriber count, fetched from `channels.list` statistics. It is a numeric count, not a normalized score, so consumers can choose their own scale or weighting. A `null` value means YouTube hides the count or did not return a usable count. Older creator records may omit the field; treat an omitted or null value as unknown, never as zero. `popularityUpdatedAt` is the UTC date the count was last refreshed.
+
+To refresh counts, set `YOUTUBE_API_KEY` in your shell and run `node scripts/refresh-popularity.js` from `docs/`. The script requests channel statistics in batches of 50, updates only popularity fields, and writes the file only after all API requests succeed. IDs missing from an API response retain their previous values. Review the diff and commit the resulting data when appropriate. The key is read from the environment and must not be saved in the repository.

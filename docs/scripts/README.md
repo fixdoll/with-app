@@ -102,3 +102,11 @@ skim before trusting, same as any other automated pass.
 - A small serverless function (Cloudflare Worker or similar) that takes
   in-game video submissions and opens a GitHub Issue automatically, instead
   of relying on the manual Issue template alone.
+
+- **`refresh-popularity.js`** — Refreshes `popularity` from YouTube subscriber counts in batches of 50 channel IDs:
+
+  ```
+  YOUTUBE_API_KEY=xxxx node scripts/refresh-popularity.js
+  ```
+
+  Hidden or unavailable counts are stored as `null`; IDs absent from the response retain their old data. The script updates the UTC `popularityUpdatedAt` date, preserves other creator properties, and only writes after all requests succeed. See `/data/README.md` for metric and workflow details.
