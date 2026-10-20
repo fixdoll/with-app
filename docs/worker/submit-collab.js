@@ -21,6 +21,23 @@
 
 const GITHUB_REPO = "fixdoll/with-app"; // owner/repo — update if this ever changes
 
+function isSupportedYouTubeUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+  if (url.username || url.password || url.port) return false;
+  const host = url.hostname.toLowerCase();
+  const path = url.pathname.split("/").filter(Boolean);
+  if (host === "youtu.be") return path.length === 1 && path[0].length > 0;
+  if (!["youtube.com", "www.youtube.com", "m.youtube.com"].includes(host)) return false;
+  if (path.length === 2 && ["shorts", "embed", "live"].includes(path[0]) && path[1].length > 0) return true;
+  return path.length === 1 && path[0] === "watch" && Boolean(url.searchParams.get("v"));
+}
+
 export default {
   async fetch(request, env) {
     // CORS: allow the game's own origin to call this. Update ALLOWED_ORIGIN
@@ -47,25 +64,37 @@ export default {
       return new Response("Invalid JSON", { status: 400, headers: corsHeaders });
     }
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return new Response("Invalid submission", { status: 400, headers: corsHeaders });
+    }
     const { videoUrl, creators, notes } = body;
 
-    if (!videoUrl || typeof videoUrl !== "string" || !creators || typeof creators !== "string") {
-      return new Response("Missing videoUrl or creators", { status: 400, headers: corsHeaders });
+    if (typeof videoUrl !== "string" || videoUrl.length > 2048 ||
+        typeof creators !== "string" || creators.trim().length === 0 || creators.trim().length > 200 ||
+        (notes !== undefined && notes !== null && typeof notes !== "string") ||
+        (typeof notes === "string" && notes.length > 1000)) {
+      return new Response("Invalid submission fields", { status: 400, headers: corsHeaders });
     }
 
     // Basic sanity check — don't accept obviously-not-a-YouTube-link submissions
-    if (!/youtube\.com|youtu\.be/.test(videoUrl)) {
+    if (!isSupportedYouTubeUrl(videoUrl)) {
       return new Response("videoUrl doesn't look like a YouTube link", { status: 400, headers: corsHeaders });
+    }
+
+    if (!env || typeof env.GITHUB_TOKEN !== "string" || !env.GITHUB_TOKEN.trim()) {
+      return new Response("Submission service unavailable", { status: 503, headers: corsHeaders });
     }
 
     const issueBody = [
       `**Video URL:** ${videoUrl}`,
       `**Creators:** ${creators}`,
       `**How was this submitted?:** In-game submission form`,
-      `**Additional notes:** ${notes || "—"}`,
+      `**Additional notes:** ${notes?.trim() || "—"}`,
     ].join("\n");
 
-    const githubRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/issues`, {
+    let githubRes;
+    try {
+      githubRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/issues`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${env.GITHUB_TOKEN}`,
@@ -78,11 +107,12 @@ export default {
         body: issueBody,
         labels: ["collab-submission", "needs-review"],
       }),
-    });
+      });
+    } catch {
+      return new Response("Failed to create issue", { status: 502, headers: corsHeaders });
+    }
 
     if (!githubRes.ok) {
-      const errText = await githubRes.text();
-      console.error("GitHub API error:", githubRes.status, errText);
       return new Response("Failed to create issue", { status: 502, headers: corsHeaders });
     }
 
