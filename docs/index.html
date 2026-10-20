@@ -197,6 +197,7 @@
   <div id="status" style="display:none; font-size:13px; color:var(--text-dim); text-align:center; padding:30px 10px; line-height:1.6; white-space:pre-line;"></div>
 
   <div id="game-area">
+    <div id="how-to-play" style="margin:0 0 14px;color:var(--text-dim);font-size:12px;line-height:1.5;">Connect the starting creator to the target: choose a shared video, then choose another creator in it. Repeat from that creator until you reach the target.</div>
     <div id="step-label" aria-live="polite"></div>
     <input type="text" id="search" aria-label="Search videos" placeholder="Search videos...">
     <div class="grid" id="video-grid"></div>
@@ -206,6 +207,7 @@
 
     <div id="submit-flow">
       <div style="font-size:13px; font-weight:600; margin-bottom:4px;">Suggest a video</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.5;">Use this when the video you need is missing. Add a YouTube link and the other creator(s) in it; you can continue your chain with the suggestion right away.</div>
       <label class="field-label" for="link-input">YouTube video link</label>
       <input type="text" id="link-input" aria-label="YouTube video link" placeholder="Paste a YouTube link">
       <div id="preview"></div>
@@ -563,7 +565,12 @@ function showVideoStep() {
 function renderVideoGrid(list) {
   videoGrid.innerHTML = "";
   if (list.length === 0) {
-    videoGrid.innerHTML = `<div style="grid-column:1/-1;font-size:13px;color:var(--text-dim);padding:10px 0;">No known videos match. Try submitting one below.</div>`;
+    const emptyState = document.createElement("div");
+    emptyState.style.cssText = "grid-column:1/-1;font-size:13px;color:var(--text-dim);padding:10px 0;line-height:1.5;";
+    emptyState.textContent = currentVideoList.length === 0
+      ? "No known videos are listed for this creator yet. Try another search, or choose ‘Can't find a video? Suggest one’ to add a YouTube link and continue your chain."
+      : "No videos match that search. Try a different title or clear the search; if the video is missing, suggest it below.";
+    videoGrid.appendChild(emptyState);
     return;
   }
   list.forEach(v => {
@@ -660,6 +667,7 @@ submitToggle.onclick = () => {
   submitToggle.style.display = "none";
   stepLabel.style.display = "none";
   submitFlow.style.display = "block";
+  document.getElementById("how-to-play").style.display = "none";
   linkInput.value = "";
   preview.style.display = "none";
   submitError.style.display = "none";
@@ -669,6 +677,7 @@ submitToggle.onclick = () => {
 
 cancelBtn.onclick = () => {
   submitFlow.style.display = "none";
+  document.getElementById("how-to-play").style.display = "";
   stepLabel.style.display = "";
   showVideoStep();
 };
@@ -737,6 +746,7 @@ confirmBtn.onclick = () => {
   submitToGitHub(link, names.join(", "));
 
   submitFlow.style.display = "none";
+  document.getElementById("how-to-play").style.display = "";
   stepLabel.style.display = "";
   showCreatorStep(provisionalVideo);
 };
