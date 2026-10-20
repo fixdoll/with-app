@@ -160,10 +160,11 @@
     </div>
   </div>
 
-  <div class="popularity-control" aria-label="Popularity influence setting">
+  <div class="popularity-control">
+    <div id="daily-difficulty" role="status" aria-live="polite" style="font-size:12px;margin-bottom:8px;">Today's shared difficulty: <span id="difficulty-value">Medium</span></div>
     <label for="popularity-influence"><span>Popularity influence</span><span id="popularity-value">50%</span></label>
-    <input type="range" id="popularity-influence" min="0" max="100" step="10" value="50" aria-describedby="popularity-description">
-    <div id="popularity-description" style="font-size:11px;color:var(--text-dim);margin-top:5px;">Default 50%. Higher values favor creators with more YouTube subscribers. Unknown counts remain eligible but get no popularity bonus.</div>
+    <input type="range" id="popularity-influence" min="0" max="100" step="10" value="50" aria-valuetext="50 percent" aria-describedby="popularity-description">
+    <div id="popularity-description" style="font-size:11px;color:var(--text-dim);margin-top:5px;">Today's shared difficulty is based on creator subscriber popularity: more popular creators make an easier challenge; less popular creators make a harder one. Unknown counts can appear in any difficulty. This setting controls how strongly popularity influences which start and target creators you get; it does not change today's difficulty. Default: 50%.</div>
   </div>
 
   <div id="trail"></div>
@@ -300,6 +301,7 @@ function applyPopularityInfluence() {
   const control = document.getElementById("popularity-influence");
   const influence = Number(control.value);
   document.getElementById("popularity-value").textContent = `${influence}%`;
+  control.setAttribute("aria-valuetext", `${influence} percent`);
   const ids = Object.keys(creators);
   if (ids.length < 2) return;
   [START, TARGET] = pickDailyPair(ids, influence);
@@ -427,6 +429,7 @@ function fakeDetectPoster(link) {
 /* ---------- RENDER: HEADER ---------- */
 
 function renderHeader() {
+  document.getElementById("difficulty-value").textContent = DAILY_DIFFICULTY[0].toUpperCase() + DAILY_DIFFICULTY.slice(1);
   document.getElementById("start-avatar").textContent = initials(creators[START].name);
   document.getElementById("start-name").textContent = creators[START].name;
   document.getElementById("start-popularity").textContent = formatPopularity(START);
