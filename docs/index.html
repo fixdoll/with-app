@@ -142,18 +142,18 @@
 </style>
 </head>
 <body>
-<div id="app">
+<main id="app" aria-label="With creator chain game">
 
-  <h1><span class="logo">w/</span>With</h1>
+  <h1><span class="logo" aria-hidden="true">w/</span>With</h1>
 
   <div class="header-bar">
-    <div class="creator-badge start">
+    <div class="creator-badge start" aria-label="Starting creator">
       <div class="avatar" id="start-avatar"></div>
       <div class="name" id="start-name"></div>
       <div class="popularity" id="start-popularity"></div>
     </div>
-    <div class="arrow">→</div>
-    <div class="creator-badge target">
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="creator-badge target" aria-label="Target creator">
       <div class="avatar" id="target-avatar"></div>
       <div class="name" id="target-name"></div>
       <div class="popularity" id="target-popularity"></div>
@@ -161,45 +161,45 @@
   </div>
 
   <div class="popularity-control">
-    <div id="daily-difficulty" role="status" aria-live="polite" style="font-size:12px;margin-bottom:8px;">Today's shared difficulty: <span id="difficulty-value">Medium</span></div>
-    <label for="popularity-influence"><span>Popularity influence</span><span id="popularity-value">50%</span></label>
+    <div id="daily-difficulty" role="status" aria-live="polite" style="font-size:12px;margin-bottom:8px;">Daily difficulty: <span id="difficulty-value">Medium</span></div>
+    <label for="popularity-influence"><span>Creator popularity influence</span><span id="popularity-value">50%</span></label>
     <input type="range" id="popularity-influence" min="0" max="100" step="10" value="50" aria-valuetext="50 percent" aria-describedby="popularity-description">
-    <div id="popularity-description" style="font-size:11px;color:var(--text-dim);margin-top:5px;">Today's shared difficulty is based on creator subscriber popularity: more popular creators make an easier challenge; less popular creators make a harder one. Unknown counts can appear in any difficulty. This setting controls how strongly popularity influences which start and target creators you get; it does not change today's difficulty. Default: 50%.</div>
+    <div id="popularity-description" style="font-size:11px;color:var(--text-dim);margin-top:5px;">Adjusts how strongly subscriber counts affect your start and target creators. It does not change today's difficulty. Creators with unknown counts may appear at any difficulty. Default: 50%.</div>
   </div>
 
-  <div id="trail"></div>
+  <div id="trail" role="list" aria-label="Creator chain" aria-live="polite"></div>
 
   <div id="status" style="display:none; font-size:13px; color:var(--text-dim); text-align:center; padding:30px 10px; line-height:1.6; white-space:pre-line;"></div>
 
   <div id="game-area">
-    <div id="step-label"></div>
-    <input type="text" id="search" placeholder="Search videos...">
+    <div id="step-label" aria-live="polite"></div>
+    <input type="text" id="search" aria-label="Search videos" placeholder="Search videos...">
     <div class="grid" id="video-grid"></div>
     <div class="grid" id="creator-grid" style="display:none;"></div>
 
-    <button id="submit-toggle" class="ghost">+ Can't find it? Submit a video</button>
+    <button id="submit-toggle" class="ghost" type="button">Can't find a video? Suggest one</button>
 
     <div id="submit-flow">
-      <div style="font-size:13px; font-weight:600; margin-bottom:4px;">Submit a missing video</div>
-      <div class="field-label">Video link</div>
-      <input type="text" id="link-input" placeholder="Paste YouTube link (try including 'match')">
+      <div style="font-size:13px; font-weight:600; margin-bottom:4px;">Suggest a video</div>
+      <label class="field-label" for="link-input">YouTube video link</label>
+      <input type="text" id="link-input" aria-label="YouTube video link" placeholder="Paste a YouTube link">
       <div id="preview"></div>
-      <div class="field-label">Who's in it?</div>
+      <div class="field-label">Other creators in the video</div>
       <div id="creator-slots"></div>
-      <button id="add-slot" style="margin-bottom:10px;">+ Add another creator</button>
-      <div id="submit-error"></div>
-      <button id="confirm-submit" class="primary" style="margin-bottom:8px;">Submit and continue</button>
-      <button id="cancel-submit" class="ghost">Cancel</button>
+      <button id="add-slot" type="button" style="margin-bottom:10px;">Add another creator</button>
+      <div id="submit-error" role="alert"></div>
+      <button id="confirm-submit" class="primary" type="button" style="margin-bottom:8px;">Continue with suggestion</button>
+      <button id="cancel-submit" class="ghost" type="button">Cancel</button>
     </div>
   </div>
 
   <div id="win-screen">
-    <h2>🎉 You reached the target!</h2>
+    <h2>You reached the target!</h2>
     <div id="win-chain"></div>
-    <button class="primary" onclick="location.reload()">Play again (mock)</button>
+    <button class="primary" onclick="location.reload()">Play again</button>
   </div>
 
-</div>
+</main>
 
 <script>
 /* ---------- REAL DATA (fetched) ---------- */
