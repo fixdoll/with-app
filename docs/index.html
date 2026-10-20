@@ -60,6 +60,7 @@
   .avatar {
     width: 48px; height: 48px; margin: 0 auto 11px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
     background: var(--surface-soft); border: 1px solid var(--border-strong);
     color: var(--text-dim); font-size: 13px; font-weight: 650; letter-spacing: .02em;
   }
@@ -423,10 +424,12 @@ function createAvatar(id, className = "avatar") {
     const img = document.createElement("img");
     img.src = creator.avatar;
     img.alt = "";
-    img.loading = "lazy";
     img.referrerPolicy = "no-referrer";
-    img.style.cssText = "width:100%;height:100%;object-fit:cover;border-radius:inherit";
-    img.addEventListener("load", () => { avatar.textContent = ""; avatar.appendChild(img); }, { once: true });
+    img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit";
+    // Attach immediately so the browser starts loading it. Keep the initials
+    // until success; on failure the image is removed and the fallback remains.
+    img.addEventListener("error", () => img.remove(), { once: true });
+    avatar.appendChild(img);
   }
   return avatar;
 }
