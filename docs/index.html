@@ -217,7 +217,7 @@
     </div>
   </div>
 
-  <div id="win-screen">
+  <div id="win-screen" class="hidden">
     <h2>You reached the target!</h2>
     <div id="win-chain"></div>
     <button class="primary" onclick="location.reload()">Play again</button>
@@ -322,6 +322,7 @@ function formatPopularity(id) {
 }
 
 function applyPopularityInfluence() {
+  hideWinScreen();
   const control = document.getElementById("popularity-influence");
   const influence = Number(control.value);
   document.getElementById("popularity-value").textContent = `${influence}%`;
@@ -338,6 +339,7 @@ function applyPopularityInfluence() {
 document.getElementById("popularity-influence").addEventListener("input", applyPopularityInfluence);
 
 async function loadData() {
+  hideWinScreen();
   showStatus("Loading today's creators…");
   try {
     const [creatorsRes, videosRes, bannedRes, prunedRes] = await Promise.all([
@@ -761,7 +763,7 @@ function submitToGitHub(videoUrl, creatorsText) {
 
 function showWinScreen() {
   document.getElementById("game-area").style.display = "none";
-  document.getElementById("win-screen").style.display = "block";
+  document.getElementById("win-screen").classList.remove("hidden");
   const winChain = document.getElementById("win-chain");
   winChain.replaceChildren();
   chain.forEach((id, index) => {
@@ -781,6 +783,13 @@ function showWinScreen() {
   total.style.marginTop = "14px";
   total.textContent = `${chain.length - 1} hop${chain.length - 1 === 1 ? "" : "s"} total`;
   winChain.appendChild(total);
+}
+
+function hideWinScreen() {
+  document.getElementById("win-screen").classList.add("hidden");
+  if (statusEl.style.display !== "block") {
+    document.getElementById("game-area").style.display = "";
+  }
 }
 
 /* ---------- INIT ---------- */
