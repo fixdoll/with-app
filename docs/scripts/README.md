@@ -106,10 +106,17 @@ skim before trusting, same as any other automated pass.
   in-game video submissions and opens a GitHub Issue automatically, instead
   of relying on the manual Issue template alone.
 
-- **`refresh-popularity.js`** — Refreshes `popularity` and channel avatars from YouTube in batches of 50 channel IDs:
+- **`refresh-popularity.js`** — Refreshes `popularity` and fills missing or invalid channel avatars from YouTube in batches of 50 channel IDs. Run from the `docs/` directory; a YouTube Data API key with access to `channels.list` is required in `YOUTUBE_API_KEY`:
 
   ```
   YOUTUBE_API_KEY=xxxx node scripts/refresh-popularity.js
   ```
 
-  Hidden or unavailable counts are stored as `null`. The script refreshes `avatar` from the channel's default thumbnail when available; absent channels or thumbnail URLs preserve existing data. It updates the UTC `popularityUpdatedAt` date, preserves other creator properties, and only writes after all requests succeed. See `/data/README.md` for field and workflow details.
+  In PowerShell, set the key for the current shell before running:
+
+  ```powershell
+  $env:YOUTUBE_API_KEY = "your-api-key"
+  node scripts/refresh-popularity.js
+  ```
+
+  Hidden or unavailable counts are stored as `null`. A valid existing HTTP(S) avatar is preserved; otherwise the script fills it from the largest usable thumbnail returned by YouTube. Absent channels and channels without a usable thumbnail keep their existing avatar value. It updates the UTC `popularityUpdatedAt` date, preserves other creator properties, and only writes after all requests succeed. Review the generated data diff before committing. See `/data/README.md` for field and workflow details.
